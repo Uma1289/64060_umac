@@ -1,0 +1,78 @@
+---
+title: "Uma Maheshwari C"
+subtitle: Assignment 1
+date: "2024-02-02"
+output:
+  pdf_document: default
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE) 
+```
+
+```{r}
+library(readr)
+processes2 <- read_csv("C://Users//ujwal//Downloads//iris.csv")
+View(processes2)
+```
+#Print out descriptive statistics for a selection of quantitative and categorical variables.
+
+# Define quantitative variables
+```{r}
+variable_1 <- c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width")
+```
+
+# Print out descriptive statistics for quantitative variables
+```{r}
+quant_desc <- summary(iris[, variable_1])
+print("Descriptive statistics for quantitative variables:")
+print(quant_desc)
+```
+
+# Define categorical variable
+```{r}
+variable_2 <- "Species"
+```
+
+# Print out descriptive statistics for categorical variable
+```{r}
+cat_counts <- table(iris[[variable_2]])
+cat(paste("Descriptive statistics for", variable_2, ":"))
+cat("\n")
+print(cat_counts)
+```
+
+# Define the variable to transform
+```{r}
+vars_to_trans <- "Sepal.Width"
+```
+
+# Perform the transformation (squaring each value)
+```{r}
+iris_trans <- iris
+iris_trans[[vars_to_trans]] <- iris[[vars_to_trans]]^2
+head(iris_trans)
+```
+
+```{r}
+library(ggplot2)
+```
+# Plot histogram of Petal.Length
+```{r}
+hist <- ggplot(iris, aes(x = Petal.Length)) +
+  geom_histogram(binwidth = 0.4, fill = "blue", color = "black") +
+  labs(title = "Histogram of Petal Length",
+       x = "Petal Length",
+       y = "Frequency")
+print(hist)
+```
+
+# Create scatterplot of Petal.Length vs Petal.Width
+
+```{r}
+scatplot <- ggplot(iris, aes(x = Petal.Length, y = Petal.Width)) +
+  geom_point(color = "red") +
+  labs(title = "Scatterplot of Petal Length vs Petal Width",
+       x = "Petal Length",
+       y = "Petal Width")
+print(scatplot)
+```

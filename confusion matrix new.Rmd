@@ -1,0 +1,108 @@
+---
+title: "knn"
+author: "Uma Maheshwari C"
+date: "2024-02-19"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ISLR)
+library(caret)
+library(class)
+```
+
+```{r}
+View(Default)
+summary(Default)
+```
+```{r}
+norm_model <- preProcess(Default, method = c('range'))
+Default_normalized <- predict(norm_model,Default)
+summary(Default_normalized)
+head(Default_normalized)
+```
+```{r}
+set.seed(123)
+model <- train(default~balance+income, data=Default_normalized, method = "knn")
+model
+
+set.seed(123)
+Serach_grid <- expand.grid(k=c(2,7,9,15))
+model <- train(default~balance+income, data=Default_normalized, method="knn", tuneGrid=Serach_grid)
+model
+
+set.seed(123)
+Serach_grid <- expand.grid(k=c(2:20))
+model <- train(default~balance+income, data=Default_normalized, method="knn", tuneGrid=Serach_grid)
+print(model)
+```
+
+```{r}
+Default_normalized <- Default_normalized[, -2]
+Index_Train <-createDataPartition(Default_normalized$default, p=0.8, list=FALSE)
+Train <- Default_normalized[Index_Train,]
+Test <- Default_normalized[-Index_Train,]
+head(Train)
+head(Test)
+```
+```{r}
+Train_Predictors <- Train[, 2:3]
+Test_Predictors <- Test[, 2:3]
+
+Train_labels <- Train[,1]
+Test_labels <- Test[,1]
+
+Predicted_Test_labels <- knn(Train_Predictors, Test_Predictors, cl=Train_labels, k=4)
+head(Predicted_Test_labels)
+```
+```{r}
+install.packages("gmodels")
+library("gmodels")
+```
+
+```{r}
+CrossTable(x=Test_labels, y=Predicted_Test_labels, prop.chisq = FALSE)
+```
+```{r}
+Predicted_Test_labels <- knn(Train_Predictors, Test_Predictors, cl=Train_labels, k=100, prob = TRUE)
+class_prob <- attr(Predicted_Test_labels, "prob")
+head(class_prob)
+```
+```{r}
+example <- confusionMatrix(data =Predicted_Test_labels, reference=Test_labels)
+example
+```
+```{r}
+library(pROC)
+```
+
+```{r}
+roc_curve <- roc(Test_labels, class_prob)
+plot(roc_curve, main = "ROC Curve", col = "blue")
+
+```
+```{r}
+roc_curve <- roc(Predicted_Test_labels, class_prob)
+roc1 <- plot.roc(Predicted_Test_labels, class_prob, main="Statistical comparison",
+                    percent=TRUE,
+                    col="blue")
+roc2 <- lines.roc(Predicted_Test_labels, class_prob, percent=TRUE, 
+                     col="green")
+testobj <- roc.test(roc1, roc2)
+text(50, 50, labels=paste("p-value =", format.pval(testobj$p.value)), adj=c(0, .2))
+```
+```{r}
+plot.roc(Predicted_Test_labels, class_prob, main="Confidence interval of a threshold", percent=TRUE,
+ci=TRUE, of="thresholds", 
+thresholds="best", 
+print.thres="best")
+```
+```{r}
+
+

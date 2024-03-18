@@ -1,0 +1,312 @@
+---
+title: "FML Assignment 4"
+author: "Uma Maheshwari C"
+date: "2024-03-16"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+An equities analyst is studying the pharmaceutical industry and would like your help in exploring and understanding the financial data collected by her firm. Her main objective is to understand the structure of the pharmaceutical industry using some basic financial measures. Financial data gathered on 21 firms in the pharmaceutical industry are available in the file Pharmaceuticals.csv. For each firm, the following variables are recorded:  
+
+1. Market capitalization (in billions of dollars)
+2. Beta
+3. Price/earnings ratio
+4. Return on equity
+5. Return on assets
+6. Asset turnover
+7. Leverage
+8. Estimated revenue growth
+9. Net profit margin
+10. Median recommendation (across major brokerages)
+11. Location of firm’s headquarters
+12. Stock exchange on which the firm is listed
+
+Use cluster analysis to explore and analyze the given dataset as follows
+
+```{r}
+library(flexclust)
+library(cluster)
+library(tidyverse)
+library(factoextra) 
+library(FactoMineR)
+library(ggcorrplot)
+library(class)
+library(caret)
+library(e1071)
+library(ISLR)
+library(dbscan)
+library(fpc)
+library(dplyr)
+```
+
+```{r}
+pharma_data <- read_csv("C://Users//ujwal//Downloads//Pharmaceuticals.csv")
+dim(pharma_data)
+t(t(names(pharma_data)))
+```
+
+
+```{r}
+# Dropping the columns that are not required for clustering
+
+pharma.data <- pharma_data[ ,-c(1,2,12,13,14)]
+dim(pharma.data)
+summary(pharma.data)
+t(t(names(pharma.data)))
+```
+```{r}
+pharma.norm <- scale(pharma.data)
+head(pharma.norm)
+```
+
+
+Questions:-
+1.Use only the numerical variables (1 to 9) to cluster the 21 firms. Justify the various choices made in conducting the cluster analysis, such as weights for different variables, the specific clustering algorithm(s) used, the number of clusters formed, and so on.
+Step 1: Before we begin clustering, we must find the right number of clusters, represented by 'k.' This entails using two commonly used approaches to determine the ideal value of 'k.
+
+```{r}
+fviz_nbclust(pharma.data, kmeans, method = "wss")
+```
+
+
+```{r}
+fviz_nbclust(pharma.data,kmeans,method = "silhouette")
+```
+
+creating a correlation matrix and print it to examine the relationship between the important variables.
+
+```{r}
+norm1 <- scale(pharma.data)
+distance <- get_dist(norm1)
+fviz_dist(distance) # distance b/w observations
+```
+
+
+```{r}
+correlation <- cor(norm1)
+ggcorrplot(correlation , outline.color = "grey50", lab = TRUE, hc.order = TRUE ,type ="full")
+```
+
+The Correlation Matrix shows that the ROA, ROE, Net Profit Margin, and Market Cap are all high.
+
+In the elbow technique, we identify the point at which the rate of decline in within-cluster sum of squares (WCSS) decreases dramatically. Although the graph does not show a distinct elbow point, we do see a linear drop in WCSS values as k values increase above 5. As a result, we consider k = 5.
+
+To validate this choice, we use the silhouette approach, which evaluates cluster cohesion as well as cluster separation. We choose the k number that results in the largest average silhouette width, suggesting better group separation and cohesion. In this situation, the best k value is 5.
+
+After using both strategies, we determine that k=5 delivers the best clustering solution. (Note: This value may be modified if necessary for improved insights.)
+
+
+Step 2: Using the determined value of 'k' and numerical variables, we will cluster the 21 firms. This grouping can be achieved by a variety of methods, including k-means, DBSCAN, and hierarchical clustering. We will test all three strategies and determine which one is best suited to the provided data.
+K-Means Clustering:
+Clustering the data using the K-Means Algorithm.
+```{r}
+set.seed(2)
+Pharma_Km <- kmeans(norm1, centers = 5, nstart = 25)
+fviz_cluster(Pharma_Km, data = norm1)#visualize the clusters
+```
+
+  This shows that the no. of clusters is five. forming five clusters with the k-means algorithm.
+
+```{r}
+Pharma_Km$centers #centriods
+```
+
+```{r}
+Pharma_Km$size # size of each clusters
+```
+
+```{r}
+Pharma_Km$cluster[12]# find the cluster of 12th observation in the dataset
+```
+
+```{r}
+Pharma_Km$withinss
+```
+We use the k-means algorithm on normalized data with k=5.
+
+K-means clustering divides the 21 enterprises into five clusters based on similarities across nine factors. The ideal value of k is 5, which results in meaningful cluster segmentation.
+
+The first cluster includes eight enterprises with moderate market capitalization, efficient asset utilization, and solid profitability. The distance within this cluster is roughly 21.9.
+
+The second cluster consists of four companies with relatively low market capitalization, low returns, and profitability issues, with an intra-cluster distance of around 12.8.
+
+Within the third cluster, three companies have very low market capitalization, considerable volatility, and struggle to generate returns. The distance inside this cluster is around 15.6.
+
+The fourth cluster consists of four companies with large market capitalization, great returns, and robust profitability, with a distance within the cluster of around 9.3.
+
+Finally, the fifth cluster includes two companies with low market capitalization but high valuation, despite their challenges in generating profits. Because just two firms are involved, the within-cluster sum of square distance is quite low (2.8).
+```{r}
+#kmeans clustering , using manhattan distance
+set.seed(15)
+k_5 = kcca(norm1, k=5, kccaFamily("kmedians"))
+k_5
+```
+
+```{r}
+#apply the predict function
+clusters_index <- predict(k_5)
+dist(k_5@centers)
+image(k_5)
+points(norm1, col=clusters_index, pch=19, cex=0.9)
+```
+
+```{r}
+dbscan::kNNdistplot(norm1, k=5)
+abline(h=3.1, lty=2)
+```
+According to the plot the optimal epsilon value would be ‘3.1’.
+
+Clustering the data using the DBSCAN Algorithm.
+
+```{r}
+pharma_db <- fpc::dbscan(norm1, eps = 3.1, MinPts = 5)
+plot(pharma_db, norm1, main="DBSCAN", frame= TRUE, xlab = "X", ylab = "Y") 
+```
+DBSCAN clustering requires a minimum density of points to form clusters, which can be difficult with a tiny dataset such as the one presented. Because of the restricted amount of data points and variables, reaching the needed density for significant clusters becomes challenging, potentially weakening the similarity between data points. As a result, the method may struggle to build unique clusters because dense clusters are formed when a specific number of points are close together within a defined radius (epsilon). Furthermore, DBSCAN examines some boundary and noise points by default, which may not be appropriate for datasets with no specified outliers or boundaries. Thus, DBSCAN may not be the best clustering algorithm for the given data.
+
+just in case if : 
+Hierarchical Clustering
+```{r}
+h_sngle <- agnes(norm1, method = "single")
+hc_comp <- agnes(norm1, method = "complete")
+hc_ward <- agnes(norm1, method = "ward")
+hc_avg <- agnes(norm1, method = "average")
+h_sngle$ac
+hc_comp$ac
+hc_ward$ac
+hc_avg$ac
+```
+
+```{r}
+pltree(hc_avg, cex = 0.6, hang = -1, main = "Dendrogram of agnes")
+rect.hclust(hc_avg, k=5, border = 1:5)
+```
+
+B.Interpret the clusters with respect to the numerical variables used in forming the cluster.
+Interpretation of the clusters for Normalized data:
+
+## Cluster 1: 
+
+Market_Cap: Relatively high
+Beta: Negatively skewed
+PE_Ratio: Moderately low
+ROE: High
+ROA: High
+Asset_Turnover: High
+Leverage: Moderately low
+Rev_Growth: Moderately positive
+Net_Profit_Margin: Positive
+
+Cluster 1 has the fastest sales growth, the lowest PE ratio, and the highest net profit margin. It can be bought or kept in reserve. This cluster consists of 8 enterprises with a within-cluster distance of roughly 21.9. Firms in this cluster have relatively low values for Market Capital, Beta, PE Ratio, ROE, and ROA. Asset turnover is moderately good, showing that assets are being utilized efficiently. Leverage and revenue growth are notably negative, however net profit margin is positive, indicating consistent profitability.
+
+## Cluster 2:
+
+Market_Cap: Moderately low
+Beta: Positively skewed
+PE_Ratio: Moderately low
+ROE: Low
+ROA: Low
+Asset_Turnover: Moderately low
+Leverage: High
+Rev_Growth: Moderately negative
+Net_Profit_Margin: Negative 
+
+Cluster 2 PE ratio is extremely high.This cluster consists of four enterprises with an average within-cluster distance of 12.8. These companies have low market capitalization, a little positive beta, and negative PE Ratio, ROE, and ROA. Asset Turnover is significantly negative, indicating inefficient asset utilization. Revenue growth is quite strong, while Net Profit Margin is nearly negative, signaling profitability issues.
+
+## Cluster 3:
+
+Market_Cap: Moderately low
+Beta: Negatively skewed
+PE_Ratio: Moderately low
+ROE: Moderately low
+ROA: Moderately low
+Asset_Turnover: Moderately low
+Leverage: Moderately low
+Rev_Growth: Moderately negative
+Net_Profit_Margin: Moderately positive 
+
+Cluster 3 carries a medium risk. This cluster, which consists of three enterprises, has an average within-cluster distance of 15.6. Firms in this cluster have extremely low market capitalization, a large positive beta, and highly negative PE Ratio, ROE, and ROA. Asset turnover is negative, indicating possible inefficiencies in asset utilization. Leverage is clearly positive, indicating increased financial leverage. Revenue Growth is modestly negative, whereas Net Profit Margin is significantly negative, indicating profitability issues.
+
+## Cluster 4:
+
+Market_Cap: Moderately low
+Beta: Negatively skewed
+PE_Ratio: High
+ROE: Moderately low
+ROA: Moderately low
+Asset_Turnover: Moderately low
+Leverage: Moderately low
+Rev_Growth: Moderately negative
+Net_Profit_Margin: Negative
+
+Cluster 4 has a high PE ratio, but due to its low net profit margin, high leverage, and high risk, it is an extremely dangerous company to buy. Revenue growth is also relatively low. This cluster has four enterprises, with a within-cluster distance of around 9.3. These companies have a large market capitalization, a somewhat negative beta, and moderately negative PE ratios, ROE, and ROA. Revenue growth is good, while Net Profit Margin is modestly positive, indicating a steady profit. Asset turnover is positive, indicating efficient asset utilization.
+
+## Cluster 5:
+
+Market_Cap: Moderately low
+Beta: Moderately low
+PE_Ratio: Moderately low
+ROE: Moderately low
+ROA: Moderately low
+Asset_Turnover: Moderately low
+Leverage: Low
+Rev_Growth: Positively skewed
+Net_Profit_Margin: Moderately low
+
+Cluster 5  This cluster contains two enterprises and has a Within-Cluster sum of square distance of 2.8. Firms in this cluster have negative market capital, beta, and ROA values. PE Ratio and ROE are extremely high, implying a premium value and great returns. Revenue Growth is modestly good, whereas Net Profit Margin is significantly negative, indicating profitability problems.
+
+C.Is there a pattern in the clusters with respect to the numerical variables (10 to 12)? (those not used in
+forming the clusters)
+
+By comparing clusters With the variables, there are few patterns.
+
+```{r}
+set.seed(3)
+not_used <- pharma_data[,-c(1,2)]
+head(not_used)
+```
+```{r}
+Cluster_numeric <-  not_used %>% select(c(10,11,12)) %>% mutate(Cluster = Pharma_Km$cluster)
+print(Cluster_numeric)
+```
+
+A) Interpretation of the clusters in terms of categorical variables:
+
+Cluster -1 consists primarily of companies headquartered in the United States, followed by the United Kingdom and Switzerland, and listed on the New York Stock Exchange (NYSE). Analysts recommend holding their equities, indicating stability and low-risk investment opportunities.
+
+Cluster 2 features NYSE-listed companies from a variety of countries, including the United States, Ireland, and France. Analysts recommend a moderate buy or sell, indicating possible growth chances for these companies.
+
+Cluster -3 includes a mix of American and German companies listed on the NYSE, AMEX, and NASDAQ stock exchanges. Analysts recommend holding or a mild buy, indicating a balanced view for these businesses.
+
+Cluster -4 consists of companies from the United Kingdom and the United States, with a mixed recommendation of partially hold and purchase for their NYSE-listed equities. This means that there is potential for growth, but it comes with some danger.
+
+Cluster -5 has a mix of NYSE-listed American and Canadian companies, each with a moderate buy or hold recommendation, indicating both growth potential and some risk.
+    
+D. Provide an appropriate name for each cluster using any or all of the variables in the data set.
+
+Market Cap, Beta, PE Ratio, ROE, ROA and Asset Turnover are the factors that are taken into consideration when naming the clusters. and with that information, I have defined the Clusters.
+
+
+Cluster 1: Market Dominators
+
+With substantial market capitalization, low beta, and robust profitability metrics (ROE, ROA, and asset turnover), Cluster 1 This cluster represents companies that dominate their respective markets, characterized by significant market capitalization, low beta, and exceptional profitability metrics. Market Dominators are renowned for their industry leadership and consistent performance.
+
+Cluster 2: Volatile Growth Prospects
+
+Companies in this cluster exhibit high volatility and growth potential, reflected in their elevated beta and PE ratios. Despite the inherent risk, Volatile Growth Prospects attract investors seeking high-growth opportunities and are willing to tolerate fluctuations in stock prices.
+
+Cluster 3: Balanced Growth Leaders
+
+Cluster 3 embodies companies that strike a balance between growth potential and stability. These Balanced Growth Leaders are characterized by moderate market capitalization, beta, and PE ratios, making them attractive options for investors seeking steady returns with manageable risk.
+
+Cluster 4: Risky Value Investments
+
+Comprising companies with high risk levels and relatively low efficiency metrics, Cluster 4 represents Risky Value Investments. While these companies may appear undervalued based on PE ratios, their inefficiencies and high risk profiles warrant cautious consideration from investors.
+
+Cluster 5: Efficient Growth Engines
+
+Cluster 5 houses companies that efficiently utilize their resources to drive growth and profitability. These Efficient Growth Engines boast strong efficiency metrics, including high ROE, ROA, and asset turnover, positioning them as attractive options for investors seeking both growth and operational excellence.
